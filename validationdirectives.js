@@ -2,17 +2,20 @@ var app = angular.module('form-example1', ['validation']);
 
 var INTEGER_REGEXP = /^\-?\d+$/;
 
-app.controller("Controller", function ($scope, RemoteValidations) {
-    $scope.disposableEmail = RemoteValidations.disposableMail;
-    $scope.duplicateEmail = RemoteValidations.duplicateMail;
+app.controller("Controller", function ($scope, Validations) {
+    angular.extend($scope, Validations);
 });
-app.factory('RemoteValidations', function ($timeout) {
+app.factory('Validations', function ($timeout) {
     return {
         disposableMail: function (email) {
             if (!email) return true;
             return email.indexOf('@mailinator.com') >= 0 ? false : true;
         },
-        duplicateMail: function (email) {
+        spamWarning: function (email) {
+            if (!email) return true;
+            return email.indexOf('@hotmail.com') >= 0 ? false : true;
+        },
+        duplicateMailRemoteCheck: function (email) {
             return $timeout(function () {
                 return ['mail1@abc.com', 'mail2@abc.com', 'mail3@abc.com'].indexOf(email) >= 0 ? true : false;
             }, 2000);
@@ -26,17 +29,21 @@ angular.module('validation', [])
         require: 'ngModel',
         link: function (scope, elm, attr, ngModelCtrl) {
             var validateFunctionNames = attr["validateFunctions"].split(",");
+            var validatorNames = attr["customValidator"].split(",");
             ngModelCtrl.$parsers.push(function (value) {
                 var hasErrors = false;
-                angular.forEach(validateFunctionNames, function (functionName) {
+                angular.forEach(validateFunctionNames, function (functionName, index) {
                     if (!scope[functionName]) {
-                        console.log('There is no function with' + functionName + ' available on the scope. Please make sure the function exists on current scope or its parent.');
+                        console.log('There is no function with name ' + functionName + ' available on the scope. Please make sure the function exists on current scope or its parent.');
                     } else {
                         var result = scope[functionName](value);
-                        if (result === false) {
-                            ngModelCtrl.$setValidity(attr.customValidator, false);
+                        if (result && result != false) {
+                            ngModelCtrl.$setValidity(validatorNames[index], true);
+                        } else {
+                            ngModelCtrl.$setValidity(validatorNames[index], false);
                             hasErrors = true;
                         }
+
                     }
                 });
                 return hasErrors ? undefined : value;
@@ -50,17 +57,18 @@ angular.module('validation', [])
         require: 'ngModel',
         link: function (scope, elm, attr, ngModelCtrl) {
             var validateFunctionNames = attr["validateFunctions"].split(",");
+            var validatorNames = attr["customRemoteValidator"].split(",");
             ngModelCtrl.$parsers.push(function (value) {
-                angular.forEach(validateFunctionNames, function (functionName) {
+                angular.forEach(validateFunctionNames, function (functionName, index) {
                     if (!scope[functionName]) {
-                        console.log('There is no function with' + functionName + ' available on the scope. Please make sure the function exists on current scope or its parent.');
+                        console.log('There is no function with ' + functionName + ' available on the scope. Please make sure the function exists on current scope or its parent.');
                     } else {
                         var result = scope[functionName](value);
                         if (result.then) {
                             result.then(function (data) { //For promise type result object
-                                ngModelCtrl.$setValidity(attr.customValidator, data);
+                                ngModelCtrl.$setValidity(validatorNames[index], data);
                             }, function (error) {
-                                ngModelCtrl.$setValidity(attr.customValidator, false);
+                                ngModelCtrl.$setValidity(validatorNames[index], false);
                             });
                         }
                     }
