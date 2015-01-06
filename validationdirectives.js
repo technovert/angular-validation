@@ -84,7 +84,7 @@ angular.module('validation', [])
             template: '<div><small class="error" ng-repeat="message in errorMessages" ng-show= "!modelController.$pristine && $first" class="warning">{{message}}</small></div>'
         };
     }])
-    .directive('updateOnBlur', [ function () {
+    .directive('updateOnBlur', [function () {
         return {
             restrict: 'A',
             require: 'ngModel',
@@ -101,7 +101,7 @@ angular.module('validation', [])
                 elm.unbind('input').unbind('keydown').unbind('change');
                 elm.bind('blur submit', function () {
                     updateNgModel();
-                    if(scope.$root.$$phase){
+                    if (!scope.$root.$$phase) {
                         scope.$apply();
                     }
                 });
